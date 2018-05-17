@@ -1,0 +1,133 @@
+---
+title: "Assumptions for parametric tests"
+author: "Dr Juan H Klopper"
+date: "May 11, 2018"
+output: html_document
+---
+
+## Introduction
+
+The use of parametric tests for numerical variable comparison (such as Students *t* test) is ubiquitous and in many cases robust.  Assumptions underly the use of these tests.  They can be tedious to check, so much so that some researchers ignore them.    It is important to be aware of these, though, and to test them before the final decision to use parametric tests is made.  
+What are these assumptions, then?  Below follows a short description of the four important assumptions.
+
+## Assumptions
+
+### Normal distribution of data
+
+The *p* value for parametric tests depends upon a normal sampling distribution.  If the sample size is large enough and the actual sample data point value are approximately normally distributed, then the central limit theorem ensures a normally distributed sampling distribution.  
+In regression analysis and in general linear models, it is the errors that need to be normally distributed.  
+
+### Homogeneity of variance
+
+This refers to the need for a similarity in the variance throughout the data. This means that the variable in the populations from which the samples were taken have a similar variance in these populations.  
+In the case of regression, the variance of one variable should be the same as all the other variables.
+
+### Interval data
+
+It is obvious that the data point values should be for a numerical variable and measured at this level.
+
+### Independence
+
+Data point values for variables for different groups should be independent of each other.  In regression analysis, the errors should likewise be independent.  
+In the rest of this post, the first two assumptions are investigated.
+
+## The assumption of normality
+
+This asumption is arguably of most importance.  It can be checked visually or numerically.  Histograms and quantile-quantile (QQ) plots serve as visual markers and various statistical tests, such as the Shapiro-Wilk test, serves as numerical tests.
+
+### Visual tests
+
+In the code below, 100 data point values for a variable named `hb` is created.  The values are taken from a normal distribution with a mean of 15 and a standard deviation of 3.  A histogram with default bin size is created to visualize the frequency distribution of the data.  A kernel density estimate is provided using the `line()` command.
+
+```{r}
+hb <- rnorm(100, mean = 15, sd = 3)
+hist(hb, prob = TRUE, main = "Histogram of hemoglobin values", las = 1, xlab = "Hemoglobin")
+lines(density(hb))
+```
+From the plot above it seems obvious that the data are normally distributed.  The QQ plot below plots the sample quantile of each data point value against its theoretical quantile.  A line is added for clarity.  The closer the data point values follow the line, the more likely that our assumption has been met.
+
+
+```{r}
+qqnorm(hb, main = "QQ plot of hemoglobin values")
+qqline(hb)
+```
+The next computer variable is named `crp` and takes on a gamma distribution.  Once again, 100 data point values are created.  Following this is the accompanying histogram and QQ plot.
+
+```{r}
+crp = rgamma(100, 2, 2)
+```
+
+```{r}
+hist(crp, prob = TRUE, main = "Histogram of c-reactive protein values", las = 1, xlab = "CRP")
+lines(density(crp))
+```
+
+```{r}
+qqnorm(crp, main = "QQ plot of CRP values")
+qqline(crp)
+```
+
+As expected, the visual indication is that the assumption of normality is not met.
+
+### Numerical tests
+
+Simply describing the data point values of a variable can give a good understanding of the underlying ditribution.  The `summary()` command returns the basic descriptive statistics, including the minimum, maximum, and the quartile values.
+
+```{r}
+summary(hb)
+```
+
+If the mean of the data point values is approximately the same as the median value, it can be an indication of the normality of the data.
+
+```{r}
+mean(hb)
+```
+  The `desc()` command in the `pastecs` package, gives more information.  It is used below in conjuction with the `round()` command, with its argument `digits =` set to 3.
+  
+```{r}
+library(pastecs)
+```
+
+```{r}
+round(stat.desc(hb, basic = FALSE, norm = TRUE), digits = 3)
+```
+The absolute values of `skewness` and `kurtosis` are interpreted as usual.  The `skew.2SE` and `kurt.2SE` need some care.  They express the relevant absolute value divided by twice the standard error.  For small sample sizes, values of less than -1.0 or more than +1.0 indicate a *p* value of less than 0.05.  For values less than -1.29 or more than +1.29, a *p* value of about 0.01 is assumed, and so on.  For very large sample sizes, a small change in standard error means a large effect on significance and in such cases these values should be greatly revised.  
+The `normtest.W` and `normtest.p` gives the test statistic and *p* value of the Shapiro-Wilk test.  
+
+The Shapiro_wilk test can be used on its own.  A *p* value of less than 0.05 indicates a high likelihood that the assumption for normality is NOT met.  Below the `hb` and `crp` variables are passed as argument to the `shapito.test()` command, resulting in the same test statistic and *p* value as above.
+
+```{r}
+shapiro.test(hb)
+```
+```{r}
+shapiro.test(crp)
+```
+
+## The assumption of homogeneity of variance
+
+The Levene test is used to test for homogeneity of variance.  The null hypothesis states equality of variances.  In order to conduct Levene's test, the *Companion to Applied Regression*, `car`, package is required.  
+The `leveneTest()` command requires the use of a `data.frame` object.  The code below imports a `csv` file and prints the first six rows and a summary to the screen.
+```{r}
+df = read.csv(file = "data.csv", header = TRUE)
+head(df)
+summary(df)
+```
+Note that there are two variables, namely `CRP` and `Group`.  The first variable is ratio-type numerical and the second is nominal categorical (a `factor` in `R`).  The command required specification of a factor by which to group the numerical variable under consideration.  The third argument used in the command is `center =` and can take the value `median` (default) or `mean`.  We are interested in the mean.  Using the median creates the Brown-Forsythe test for variances.  
+The code below imports the `car` package and runs the Levene test.
+```{r}
+library(car)
+leveneTest(df$CRP, df$Group, center = mean)
+```
+The *p* value is less than the usually chosen $\alpha$ value of 0.05.  The null hypothesis is not rejected and the variances are accepted as being equal, allowing for the use of a paramatric test.
+
+It is taken for granted that the variable considered for testing the asumptions is numerical and for the different groups are independent and this post will conclude here.
+
+## Conclusion
+
+Testing the assumptions for the use of parametric tests can seem laborious, but is an essential requirement in data analysis.
+
+
+Written by Dr Juan H Klopper  
+http://www.juanklopper.com  
+YouTube https://www.youtube.com/jhklopper  
+Twitter @docjuank
