@@ -1,0 +1,227 @@
+---
+title: "Logistic regression"
+author: "Dr Juan H Klopper"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r, echo = FALSE}
+setwd("C:/Users/juank/Dropbox/R/Blog posts/20180514 Logistic regression")
+```
+
+## Introduction
+
+The `R` code files and spreadsheet files for this post can be found at:  https://www.github.com/juanklopper/R_statistics 
+
+Logistic regression is similar to linear regression, but is used when the dependent variable (outcome0), $Y$, is categorical.  Recall the equation for linear regresssion, written below for a single variable, $X$, with an intercept given as $\beta_0$ and an error term, $\epsilon_i$:
+
+$$Y_i = \beta_0 + b_1 X_i + \epsilon_i$$
+The best fit for the parameters $\beta_0$ and $\beta_i$ were found by minmizing the square of the errors (difference between $y_i$ and $\hat{y}_i$).  
+
+Since $Y$ is now a categorical variable, the effort shift to calculating the probability of finding one of the data point values in the sample space of $Y$, i.e. $P \left( Y \right)$.  It is denoted by:
+
+$$P \left( Y \right) = \frac{1}{1+e^{- \left( b_0 + \beta_1 X\right)}}$$
+
+This extends naturally to more than a single indepedent variable.    
+
+This post will explain logistic regression in the case of a dichotomous dependent variable, coded as $0$ when an outcome does not occur and $1$ if it does.  Finding the optimum parameter values is done by the process of *maximum-likelihood estimation*.
+
+## Log-likelihood statistic
+
+The result of the probability, $P \left( Y \right)$ above, is between $0$ and $1$ (inclsuive).  The difference between this probability value and the actual value (being either $0$ or $1$) is expressed in terms of the log-likelihood:
+
+$$\sum_{i=1}^{n} \left[ Y_i \ln{\left( P \left( Y_i \right) \right)} + \left( 1 - Y_i \right) \ln{\left(1 - P \left( Y_i \right)  \right)} \right]$$
+
+This fulfills the same role as the sum of square errors in linear regression.  
+
+## Deviance
+
+Another way of assessing how well the parameters fit the data is *deviance*.  It is calculated as:
+
+$$deviance = -2 \times log-likelihood$$
+
+It is more useful as it has a $\chi^2$ distribution, allowing for hypothesis testing.  
+
+It also allows for the comparison of one logistic regression model against another.  It is common to use a baseline model.  One such model uses only the dependent variable, dichotomous data point value that occurs most commonly.  In terms of logistic regression, this is a model that only contains the intercept.  The deviance of the baseline minus the deviance of the *new* model is then the $\chi^2$ statistic.  Degrees of freedom is calculated by subtracting $1$ from the number of parameters in the new model (which is $1$ plus the number of independent variables).  
+
+## Wald statistic
+
+In linear regression the probability of finding a coefficient for any of the independent variables can be calculated. The concurrent statistic in logistic regression is the *z* statistic and it follows a normal distribution.  It calcuates the probability of finding a coefficient value other than $0$.  It is calculated as follows:
+
+$$z = \frac{b}{{SE}_b}$$
+
+Here $b$ is the coefficient under consideration and ${SE}_b$ is its standard error.  The *p* value calculated from this must be viewed with caution.  As the value for $b$ increases, its standard error increases even more, leading to a small *z* statistic and underestimating the significance of the particular independent variable.  
+
+## *R* statistic
+
+The *R* statistic is the partial correlation between the dependent variable and each of the predictor variables.  It ranges form $-1$ to $+1$ (inclusive), with the latter indicating a rise in the likelihood of the dependent variable as the independent variable under consideration increases, etc..  It is calculated as follows:
+
+$$R = \sqrt{\frac{z^2 -2 {df}}{{defiance}_{baseline}}}$$
+
+With the Wald statistic as part of the calculation of the *R* statistic, it must be viewed with caution.  Even more so for the R<sup>2</sup> value.  There are various ways of calcuating the latter.  The Hosmer-Lemeshow R<sup>2</sup> value is calculated as:
+
+$$R^2 = \frac{{deviance}_{model}}{{deviance}_{new}}$$
+
+The Cox-Snell R<sup>2</sup> value is calculated as:
+
+$$R^2 = 1 - e^{\frac{{deviance}_{new} - {deviance}_{baseline}}{n}}$$
+
+## Information criteria
+
+Yet more ways of assessing how well the model performs is the Akaike information criterion (AIC) and the Bayes information criteria (BIC).  Both aim to solve the problem of an increase in R<sup>2</sup> value whenever more independent variables are added.  They penalize the assessment for adding more variables.
+
+$$AIC = deviance - {2}{k} \\ BIC = deviance + {2}{k} \times \ln{\left( n \right)}$$
+
+Here $n$ is the sample size and $k$ is the number of independent variables.
+
+## Odds ratio
+
+This is an important measure of a logistic regression model.  Each of the independent variables in the model increases or decreases the odds of the outcome ($1$) of the dependent variable.  This change has a threshold of $1$ and refers to a single unit of change in the independent variable and its effect.  Below this, the independent variable under consideration decreases the odds of the outcome.  Above $1$, it increases the odds.  
+
+The odds ratio (OR) is calculated from the coefficients.
+
+$$OR = {e}^{b_i}$$
+
+This OR can be expressed as a percentage.  In the case of the independent variable being cetegorical, we have the fowllowing.  If the OR is less than $1$, subtract it from $1$.  For example, with an OR = $0.4$ it follows that $1.0 - 0.4 = 0.6$.  Multiplying this by 100 gives rise to the statement that a unit rise in the particular independent variable reduces the odds of the outcome by 60%.  
+
+If the value is larger than $1$, subtract $1$ from it.  For example, given and OR of $1.12$ it follows that $1.12 - 1.0 = 0.12$.  Multiplying this by 100 gives rise to the statement that a unit increase in the particular independent variable increases the odds of the outcome by 12%.  
+
+
+## Building the model
+
+There are various ways of building a model.  In the first, all the indpendent variables are entered.  This is termed the *forced entry method*.  
+
+The *stepwise method* on the other hand, has a forward and backward method.  In the forward method only the constant term is used.  A single variable is then added to the model at a time.  It is kept only if it improves the AIC or the BIC.  In the backward method, the model is initiated as with the forced entry method, but independent variables are removed one at a time.  If it increases the AIC or BIC it is brought back.  
+
+There are also hybrids of the two stepwise methods.  In the forward-backward approach the model starts with the forward method, but each time a variable is added all the entered variables are tested for possible removal.  
+
+## Assumptions
+
+The first assumption is that there is a linear relationship between continuous independent variables and the logit of the outcome variable.    
+
+Independence of errors requires that there be no dependence between samples in the model, i.e. using the same individuals at different times.
+
+Multicollinearity refers to a relastionship (correlation) between the indepedent variables and must be excluded from logistic regression models.
+
+## Building the model
+
+The datasheet for this post is a spreadsheet file in *comma seperated values* format with the first rows containg the variable names (column headers).  The code snippet below imports the data file as a `list` in the computer variable `df`.
+
+```{r}
+df = read.csv("LR.csv", header = TRUE)
+```
+
+A look at the variables is achieved by the `names()` command.
+```{r}
+names(df)
+```
+
+In this case, *Ouctome* is the dependent variable.  The other three can be taken as independent variables. The first six rows can be viewed using the `head()` command.
+
+```{r}
+head(df)
+```
+Note that gender is a categorical variable with a sample space containing two values, `Male` and `Female`.  A dichotomous sample space was chosen for the sake of explanation.  The dependent variable *Outcome* is also categorical.  `R` will automatically change these to numerical values, i.e. `0` and `1`.  This will be done alphabetically, though, and needs attention to set up properly.  This is achieved using the `relevel()` command.  In the models required for this post, it would make sense to have `Deceased` as the base data point value and `Alive` as `1`.  For the sake of argument `Male` is set as the base data point value.  This model will the test the independent variabels' effect on an `Alive` outcome.
+
+```{r}
+df$Gender <- relevel(df$Gender, "Male")
+df$Outcome <- relevel(df$Outcome, "Deceased")
+```
+
+A model can be created with just the intercept as predictor variable.  The `glm()` command creates the model.  The code snippet below shows `Outcome` as dependent variable.  The `~` symbol acts as equal sign.  the `family = ` argument is set to `binomial()` indicating that the ouctome is dichotomous.
+
+```{r}
+model_0 <- glm(Outcome ~ 1, data = df, family = binomial())
+```
+
+A summary can be printed using the `summary()` command.
+```{r}
+summary(model_0)
+```
+Of note is the *null-deviance* that will act as a baseline.  Adding and removing independent variables must lower the *residual-deviance* (which is equal to the null-deviance for now).  
+
+In keeping with the backward stepwise method, all the independent variables are added to `model_1` below.
+
+```{r}
+model_1 <- glm(Outcome ~ Gender + Hours + Prelim, data = df, family = binomial())
+```
+ The summary is as follows:  
+ 
+```{r}
+summary(model_1)
+```
+The residual deviance has indeed decreased to 184.93, which shows an improvement to the model.  
+
+Note that `Gender` shows `Male` as baseline, as was encoded above.  The model then shows the effect of being female.
+
+Still in keeping with the backward stepwise method, in `model_2` below, `Gender` is removed.  The `.` can be used in place of *ALL* the independent variables listed by addition (`+`), in `model_1`.  
+
+```{r}
+model_2 <- glm(Outcome ~ . - Gender, family = binomial(), data = df)
+summary(model_2)
+```
+The residual deviance has increased to 191.38.  `Gender` must be returned to the model.  In `model_3`, `Hours` are removed.
+
+```{r}
+model_3 <- glm(Outcome ~ . - Hours, data = df, family = binomial())
+```
+
+The residual deviance can be expressed on its own.
+
+```{r}
+model_3$deviance
+```
+This is still higher than the model with all the independent variables.  In `model_4` `Prelim` is removed.
+
+```{r}
+model_4 <- glm(Outcome ~ . - Prelim, data = df, family = binomial())
+model_4$deviance
+```
+
+Higher again. The `model_1` is chosen as the best model.  It can be evaluated as per the discussion above.
+
+The function below extracts the relevent data from the model that is passed as argument and expresses the relevent *R*<sup>2</sup> values.
+
+```{r}
+rsquared <- function(created_model) {
+  dev <- created_model$deviance
+  null_dev <- created_model$null.deviance
+  model_n <- length(created_model$fitted.values)
+  R_l <- 1 - dev / null_dev
+  R_cs <- 1 - exp(-(null_dev - dev) / model_n)
+  R_n <- R_cs / (1 - exp(-(null_dev / model_n)))
+  cat("Pseudo R-squared for logistic regression model\n\n")
+  cat("Hosmer and Lemeshow R-squared\t", round(R_l, 3), "\n")
+  cat("Cox and Snell R-squared\t\t\t", round(R_cs, 3), "\n")
+  cat("Nagelkerke R-squared\t\t\t\t", round(R_n, 3), "\n")
+}
+```
+
+```{r}
+rsquared(model_1)
+```
+
+The odds ratios for the three independent variables is expressed below.  In short, they express a change in the odds of what was coded as `1` for the dependent variable based on a unit increase in the specific independent variable.  As mentioned above, these can be expressed as the exponent of the coefficents, $\beta$ values.  The code snippet below shows the coefficients for the three independent variables and the intercept.
+
+```{r}
+model_1$coefficients
+```
+
+The code snippet below expresses the exponent of each of these values.  It is achieved using the `exp()` command.  Note that it is wrapped in the `round()` command, with the number of decimal places to display, set at `2`.
+
+```{r}
+round(exp(model_1$coefficients), 2)
+```
+
+`Gender` is a categorical variable and `Male` was coded as the baseline.  The odds ratio expressed under `Gender` is `0.28`.  This is less than 1.0.  The model thus states that being female lowers the odds of the outcome.  Subtracting this from 1.0 relates a decrease of 72%.
+
+Note that `Hours` has no effect in changing the odds, and `Prelim` again lowers the odds.
+
+It is imporant to also express condifence intervals around the odds ratios.  Typically these are set at 95%.  
+
+```{r}
+round(exp(confint(model_1)), 2)
+```
+
