@@ -1,0 +1,126 @@
+---
+title: "Maternal mortality ratios using World Bank open data"
+author: "Dr Juan H Klopper"
+output:
+  html_document:
+    toc: true
+    number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd(getwd())
+library(WDI)
+library(plotly)
+library(dplyr)
+```
+
+<style type="text/css">
+h1 {color:#1a2451}
+h2 {color:#ffbd4a}
+h3 {color:#1a2451}
+</style>
+
+![](KRG elegant logo for light BG.png)
+
+## Introduction
+
+The WorldBank(R) provides open data for hundreds of indicators.  These indicators are available for most contries spanning many years.  You can learn more at https://datacatalog.worldbank.org/ 
+
+The `WDI` library provides easy access to the data.  In this post, I will take a look at the maternal mortality ratio indicator for the United States of America, Brazil, and South Africa.
+
+(The appropriate libraries have been imported.  The `plotly` library will be used for plotting and the `dplyr` library will be used to extract data for plotting.  The `WDI` library uses the World Bank API to send search queries.  A local cache is held for some of the data such as the indicator names.  The `WDIcache()` command can be run to update the cache held for searches.)
+
+## Looking up an indicator
+
+The World Bank data that is availabe through this API provides many variable including _iso2c_ country codes, names of the variables, and many more.  The `WDISearch()` command allows strings to be searched for in these variables.  In the code block below a search for _maternal mortality ratio_ is made in the _name_ variable.
+
+```{r}
+WDIsearch(string = "maternal mortality ratio",
+          field = "name",
+          short = FALSE)
+```
+
+Two indicators are returned.  The `short = FALSE` argument allows for the detailed information.
+
+## Searching for the data
+
+In the code block below, the `WDI()` command is used to return a `data.frame` of the three countries listed for the specified indicator, from 2005 to 2015.  The `extra = FALSE` argument returns a shortened set of variables.
+
+```{r}
+df <- data.frame(
+WDI(country = c("US",
+                "BR",
+                "ZA"),
+    indicator = "SH.STA.MMRT",
+    start = 2005,
+    end = 2015,
+    extra = FALSE))
+```
+
+The first six rows can be viewed using the `head()` command.
+
+```{r}
+head(df)
+```
+
+The full list of variables is shown below.
+
+```{r}
+names(WDI(country = "US",
+          indicator = "SH.STA.MMRT",
+          start = 2015,
+          end = 2016,
+          extra = TRUE))
+```
+
+
+## Filtering the data
+
+In the code block below the `filter()` command is used to create three `data.frame` objects, one for each country.
+
+```{r}
+brazil <- df %>% filter(iso2c == "BR")
+usa <- df %>% filter(iso2c == "US")
+za <- df %>% filter(iso2c == "ZA")
+```
+
+## Plotting the data
+
+The code block below creates three traces for a single plot using `plotly`.  
+
+```{r}
+trace0 <- brazil$SH.STA.MMRT
+trace1 <- usa$SH.STA.MMRT
+trace2 <- za$SH.STA.MMRT
+dts <- brazil$year
+
+df.plot <- data.frame(dts, trace0, trace1, trace2)
+
+p1 <- plot_ly(df.plot,
+              x = ~dts,
+              y = ~trace0,
+              name = "Brazil",
+              type = "scatter",
+              mode = "lines+markers") %>% 
+  add_trace(y = ~trace1,
+            name = "USA",
+            type = "scatter",
+            mode = "lines+markers") %>% 
+  add_trace(y = ~trace2,
+            name = "RSA",
+            type = "scatter",
+            mode = "lines+markers") %>% 
+  layout(title = "Maternal mortality per 100,000 births",
+         xaxis = list(title = "Year",
+                      zeroline = FALSE),
+         yaxis = list(title = "Count",
+                      zeroline = FALSE))
+p1
+```
+
+## Conclusion
+
+The WDI library is extremely easy to use, yet powerful enough to bring a massive open data resource to you desktop.  Learn more about it at: https://cran.r-project.org/web/packages/WDI/WDI.pdf 
+
+If you would like to know more about maternal mortality rates in South Africa, you can view this issue of the South African Medical Journal: http://www.samj.org.za/index.php/samj/issue/view/215/showToc 
