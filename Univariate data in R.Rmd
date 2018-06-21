@@ -1,0 +1,248 @@
+---
+title: "Working with univariate data in R"
+author: "Dr Juan H Klopper"
+output:
+  html_document:
+    toc: true
+    number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd(getwd())
+library(plotly)
+```
+
+<style type="text/css">
+h1 {color:#1a2451}
+h2 {color:#ffbd4a}
+h3 {color:#1a2451}
+</style>
+
+![](KRG elegant logo for light BG.png)
+
+## Introduction
+
+* Dataset that consists of a single variable
+* Data types
+  * Categorical
+    * Nominal or ordinal
+  * Discrete numerical
+  * Continuous numerical
+* Data types can be transformed
+  * Discrete (integer) age values can be seen as continuous if needed
+  * Continuous variable can be seen as ordinal categorical if binned
+  * etc
+  
+## Categorical data
+
+### Tables
+
+* Create a data vector of $200$ samples 
+* Display the number of unique values using the `table()` command
+
+```{r}
+set.seed(1)
+groups <- sample(c("I", "II", "III", "IV"),
+                 200,
+                 replace = TRUE)
+table(groups)
+```
+
+### Bar plot
+
+* Use individual bars for each unique data point value
+* Bar height indicates count
+
+```{r}
+barplot(table(groups),
+        main = "Sample size for each grade",
+        xlab = "Grade",
+        ylab = "Count",
+        las = 1,
+        col = "deepskyblue")
+```
+* ALWAYS display the full _y_ axis
+
+```{r}
+barplot(table(groups),
+        main = "This is intentionally misleading",
+        xlab = "Grade",
+        ylab = "Count",
+        las = 1,
+        col = "deepskyblue",
+        ylim = c(40, 60),
+        xpd = FALSE)
+```
+
+* An intercative plot using `plotly`
+
+```{r}
+p <- plot_ly(x = names(table(groups)),
+             y = as.numeric(table(groups)),
+             type = "bar",
+             marker = list(color = "deepskyblue")) %>% 
+  layout(title = "Sample size for each grade",
+         xaxis = list(title = "Grade",
+                      zeroline = FALSE),
+         yaxis = list(title = "Count",
+                      zeroline = FALSE))
+p
+```
+
+### Factors
+
+* Specify a variable as categorical
+* Create a data vector of pain scale values ($0$ through $5$)
+
+```{r}
+pain <- c(1, 4, 3, 2, 2, 2, 1, 2, 3, 0, 5, 5, 5, 5, 4, 3, 4, 0, 2, 1, 3, 3, 1)
+```
+
+* Change to categorical values
+
+```{r}
+pain <- as.factor(pain)
+table(pain)
+```
+
+## Numerical data
+
+* Creating a variable called `wcc`
+  * $n = 100$
+  * $\mu = 15$
+  * $\sigma = 3$
+
+```{r}
+set.seed(1)
+wcc = round(rnorm(100,
+                  15,
+                  4),
+            digits = 1)
+```
+
+### Measures of central tendency
+
+* Mean
+
+```{r}
+mean(wcc)
+```
+
+* Median
+
+```{r}
+median(wcc)
+```
+
+### Measures of dispersion
+
+* Minimum `min()`
+
+```{r}
+min(wcc)
+```
+
+* Maximum `max()`
+
+```{r}
+max(wcc)
+```
+
+* Range `range()`
+
+```{r}
+range(wcc)
+```
+
+* Variance `var()`
+
+```{r}
+var(wcc)
+```
+
+* Standard deviation `sd()`
+
+```{r}
+sd(wcc)
+```
+
+* Quantiles `quantile()`
+
+```{r}
+quantile(wcc)
+```
+
+  * Specifying the quantiles
+
+```{r}
+quantile(wcc,
+         c(0.1, 0.9))
+```
+
+* Interquartile range `IQR()`
+
+```{r}
+IQR(wcc)
+```
+
+* Proportions
+  * Proportions of `wcc` data point values larger than $20$
+  
+```{r}
+sum(wcc > 20) / length(wcc)
+```
+
+* _z_ scores (standard deviations away from the mean)
+
+```{r}
+(wcc - mean(wcc)) / sd(wcc)
+```
+
+### Summary statistic
+
+* Most common descriptive statistics
+
+```{r}
+summary(wcc)
+```
+
+### Histogram
+
+* Show counts by binning the numerical variable
+
+```{r}
+hist(wcc,
+     main = "White cell count distribution",
+     xlab = "White cell count",
+     ylab = "Count",
+     col = "orange",
+     las = 1)
+```
+
+* Probability density
+  * Rug plot added
+
+```{r}
+hist(wcc,
+     main = "White cell count distribution",
+     xlab = "White cell count",
+     ylab = "Fraction",
+     col = "orange",
+     las = 1,
+     prob = TRUE)
+rug(wcc)
+```
+
+### Box plots
+
+* View data distribution by quartiles and possible outliers
+
+```{r}
+boxplot(wcc,
+        main = "White cell count",
+     xlab = "White cell count",
+     ylab = "Distribution",
+     col = "green",
+     las = 1)
+```
