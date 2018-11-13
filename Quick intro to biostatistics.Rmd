@@ -1,0 +1,439 @@
+---
+title: "A quick introduction to R for biostatistics"
+author: "Dr Juan H Klopper"
+output:
+  html_document:
+    toc: true
+    number_sections: false
+---
+
+```{r Comments, include=FALSE}
+# This line starts with a hastag (pound) symbol
+# This line too
+# It is used for comments
+# It is ignored by R
+# Use it to leave messages for yourself
+```
+
+```{r Cascading style sheet, include=FALSE}
+# The code below is a cascading style sheet for HTML webpage rendering
+# It colors the text headers when this document is rendered as a web page
+```
+
+<style type="text/css">
+h1 {color:#1a2451;}
+h2 {color:#ffbd4a;}
+h3 {color:#1a2451;}
+</style>
+
+```{r Inserting an image, include=FALSE}
+# The line of code below inserts a picture file
+```
+
+![](KRG elegant logo for light BG.png)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd(getwd())  # Setting the working directory
+```
+
+## Introduction
+
+This is the RMD file (rendered HTML if you are viewing it on RPubs) for my YouTube video on using R for biostatistics.  Download the RMD file from Github and add your own notes during the tutorial!
+
+## Libraries
+
+Installing R provides the core or base language.  R can be extended using libraries (packages).  These can be installed using the Package tab (right-bottom of the default interface).
+
+```{r Libraries, message=FALSE, warning=FALSE}
+library(tibble)  # Modern dataframes
+library(readr)  # Imports and exports spreadsheet files
+library(dplyr)  # Tidy data analysis
+library(DT)  # Displays HTML tables
+```
+
+
+## Simple arithmetic
+
+At its heart, many computer languages are giant, fancy calculators.  Below is some code for simple arithmetic and common mathematical functions.
+
+```{r Addition}
+2 + 2 + 4
+```
+
+```{r Subtraction}
+2 - 5 - 4
+```
+
+```{r Multiplication}
+2 * 4 * 3
+```
+
+```{r Division}
+3 / 4
+```
+
+```{r Powers}
+3^3
+```
+
+```{r Arithmetical order}
+(2 + 4) * 3
+```
+
+```{r Exponents base e}
+exp(1)
+```
+
+```{r Logarithms base 10}
+log10(1000)
+```
+
+```{r Logarithms base e (default)}
+log(1000,
+    base = exp(1))
+```
+
+## Lists
+
+Lists are object that contain elements, separated by commas.  These can be numbers or words.
+
+```{r List of systolic blood pressures (numerical values)}
+c(120, 120, 110, 130, 140)
+```
+
+```{r List of diseases (strings)}
+c("Pneumonia", "ARDS", "Chronic bronchitis")
+```
+
+## Computer variables
+
+Lists (among other things) can be stored in your computer's memory as an object.  The name given to the object is called a computer variable.
+
+```{r Systolic blood pressure}
+sbp <- c(120, 120, 110, 130, 140)
+```
+
+```{r Calling the sbp list object}
+sbp
+```
+
+```{r A sequence}
+# There are rules for computer variable names
+# Below is an example of snake-case
+patient.number <- seq(from = 1,
+                      to = 10,
+                      by = 1)
+patient.number
+```
+
+## Addressing
+
+Every element in a object has an address that can be referenced.
+
+```{r First systolic blood presssure}
+sbp[1]
+```
+
+```{r First three systolic blood pressures}
+sbp[1:3]
+```
+
+```{r First and third systolic blood pressures}
+sbp[c(1, 3)]
+```
+
+## Distributions
+
+Data point values for a variable are distributed according to a pattern, called a distribution.
+
+```{r Uniform distribution}
+set.seed(123)  # Forces a specific selection of values
+age <- sample(18:85,
+              500,
+              replace = TRUE)
+```
+
+```{r Standard normal distribution}
+set.seed(123)
+before.after <- rnorm(500)
+```
+
+```{r Normal distribution}
+set.seed(123)
+sbp <- round(rnorm(500,
+                   mean = 120,
+                   sd = 20),
+             digits = 0)
+```
+
+```{r Chi-squared distribution}
+set.seed(123)
+crp <- round(rchisq(500,
+                    df = 2),
+             digits = 1)
+```
+
+```{r Random choice}
+set.seed(123)
+group <- sample(c("Control",
+                  "Placebo"),
+                500,
+                replace = TRUE)
+```
+
+```{r Random choice with weights}
+set.seed(123)
+side.effects <- sample(c("No",
+                         "Yes"),
+                       500,
+                       replace = TRUE,
+                       prob = c(0.8,
+                                0.2))
+```
+
+## Descriptive statistics
+
+The first part of the analysis of data is descriptive statistics.
+
+```{r Mean age}
+mean(age)
+```
+
+```{r Median age}
+median(age)
+```
+
+```{r Variance in age}
+var(age)
+```
+
+```{r Standard deviation of age}
+sd(age)
+```
+
+```{r Min and max age}
+range(age)
+```
+
+```{r Interquartile range of age}
+IQR(age)
+```
+
+```{r First quartile of age}
+quantile(age,
+         0.25)
+```
+
+```{r Third quartile of age}
+quantile(age,
+         0.75)
+```
+
+```{r Summary of age}
+summary(age)
+```
+
+```{r Sample space of group variable}
+unique(group)
+```
+
+## Data visualization
+
+After describing the data, more information can be gained from visualizing it.
+
+### Box-and-whisker plot
+
+```{r Box plot}
+boxplot(age)
+```
+
+```{r Box plot with title, axes labels, color}
+boxplot(age,
+        col = "deepskyblue",
+        main = "Patient age",
+        xlab = "Patients",
+        ylab = "Age")
+```
+
+### Histogram
+
+```{r Histogram of before.after}
+hist(before.after,
+     col = "pink",
+     main = "Difference in measurement before and after treatment",
+     xlab = "Measurment",
+     ylab = "Counts")
+```
+
+### Scatter plot
+
+```{r Scatter plot of numerical pairs}
+plot(age,
+     sbp,
+     col = "blue",
+     main = "Age vs systolic blood pressure",
+     xlab = "Age",
+     ylab = "Systolic blood pressure")
+```
+
+## Tibbles
+
+Data for analysis are typically stored in dataframes.  These are rows and columns of data.  Each column represents a variable and each row contains the data point values for a specific subject.
+
+### Creating a tibble
+
+```{r Creating a tibble from the data}
+my.data <- tibble(Age = age,
+                  Difference = before.after,
+                  CRP = crp,
+                  Group = group,
+                  sBP = sbp,
+                  SideEffects = side.effects)
+```
+
+### Exporting a tibble
+
+```{r Exporting the tibble as a csv file}
+write_csv(my.data,
+          "Data.csv")
+```
+
+## Importing data
+
+Data in a spreadsheet file can be imported for analysis.
+
+```{r Importing dataset, message=FALSE, warning=FALSE}
+# Spreadhseet file is in same folder as this RMD file
+# setwd(getwd()) was used initially
+# Need only refer to file name (else use the full folder address)
+data <- read_csv("ProjectData.csv")
+```
+
+## Inspecting the data
+
+```{r Data table}
+datatable(data)
+```
+
+## Selections
+
+Subsets of a dataframe can be selected based on chosen rules.
+
+```{r Create new tibble of control group}
+control.group <- data %>% filter(Group == "I")
+```
+
+```{r Patients younger than 50}
+younger.patients <- data %>% filter(Age < 50)
+```
+
+```{r Only sBP and CRP for younger patients}
+younger.patients.select <- data %>% filter(Age < 50) %>% 
+  select(sBP,
+         CRP)
+```
+
+```{r Younger patients in group II}
+younger.patients.II <- data %>% filter((Age < 50) & Group == "I")
+```
+
+## Descriptive statistics of the new data
+
+### Age by group
+
+```{r Mean age by group}
+data %>% 
+  group_by(Group) %>% 
+  summarise(mean.age = mean(Age))
+```
+
+### Side-effect count
+
+```{r Counting side-effects}
+data %>% group_by(SideEffects) %>% 
+  summarise(count = n())
+```
+
+### Side effects by group
+
+```{r Side-effects by group }
+data %>% 
+  group_by(Group) %>% 
+  count(SideEffects)
+```
+
+## Visualizing the new data
+
+### Box plot of age by group
+
+```{r Box plot of age given the group}
+boxplot(Age ~ Group,
+        data = data,
+        col = c("deepskyblue", "orange"),
+        main = "Age distribution by group",
+        xlab = "Group",
+        ylab = "Age",
+        las = 1)
+```
+
+```{r Scatter plot of systolic BP given the age}
+plot(sBP ~ Age,
+     data = data,
+     col = "blue",
+     main = "Age vs systolic blood pressure",
+     xlab = "Age",
+     ylab = "Systolic blood pressure",
+     las = 1)
+```
+
+## Inferential statistics
+
+### Student's _t_ test
+
+```{r Student t test}
+t.test(sBP ~ Group,
+       data,
+       alternative = c("two.sided"),
+       mu = 0,
+       paired = FALSE,
+       var.equal = TRUE,
+       conf.level = 0.95)
+```
+
+### Linear regression
+
+```{r Predicting systolic blood pressure given age}
+summary(lm(sBP ~ Age,
+           data = data))
+```
+
+### $\chi^2$ test for independence
+
+```{r Reminder of side-effects per group}
+data %>% 
+  group_by(Group) %>% 
+  count(SideEffects)
+```
+
+```{r Group vs side-effects contingency table}
+grpI <- c(137,
+          114)
+grpII <- c(152,97)
+nrows <- 2
+group.side.effect.matrix <- matrix(c(grpI,
+                                     grpII),
+                                   nrow = nrows,
+                                   byrow = TRUE)
+rownames(group.side.effect.matrix) <- c("Group I",
+                                        "Group II")
+colnames(group.side.effect.matrix) <- c("No",
+                                       "Yes")
+group.side.effect.matrix
+```
+
+```{r Chi-squared test for independence}
+chisq.test(group.side.effect.matrix,
+           correct = FALSE)
+```
+
