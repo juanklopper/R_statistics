@@ -1,0 +1,168 @@
+---
+title: "Multivariate analysis of means for two groups"
+author: "Dr Juan H Klopper"
+output:
+  html_document:
+    toc: true
+    number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd(getwd())
+```
+
+```{r Import libraries, message=FALSE, warning=FALSE}
+library(tibble)
+library(readr)
+library(plotly)
+library(DT)
+library(mvnormtest)
+library(dplyr)
+library(ICSNP)
+library(Hotelling)
+```
+
+<style type="text/css">
+h1 {color:#1a2451;}
+h2 {color:#ffbd4a;}
+h3 {color:#1a2451;}
+</style>
+
+![](KRG elegant logo for light BG.png)
+
+## Introduction
+
+There are a lot of confusing terms when considering regression.  Multivariate analysis differs from univariate analysis in the number of target or outcome or dependent variables.  In multivariable regression, one or more independent variable(s) is (are) used to predict a single dependent variable.  In multivariate regression, one or more independent variable(s) is (are) used to predict more than one dependent variable.
+
+Similarly, the _z_ and the _t_ tests compare the means of a single variable between two samples.  Multivariate analysis compares the means of more than one variable (at the same time), between two samples.
+
+There are several reason to use multivariate analysis over separate univariate analyses.  The case might arise where there is an effect on more than one variable given an intervention.  A medication might effect more than one variable and it is their _combined_ difference that may be of clinical value.  Separate univariate tests also increase the possibility of a type I error, as this type of error is summative over the individual tests.
+
+In this post we will look at comparing the means of more than one variable between two samples.  While a multivariate normal distribution exists (from which other multivariate distributions are derived), it is more common to use the multivariate $T^2$ distribution for reasons similar to the use of the _t_ test instead of the _z_ test in univariate analysis.
+
+As with parametric univariate analysis, the use of multivariate analysis also requires certain assumptions be met.  We shall start by looking at these.
+
+## Assumptions
+
+The most basic assumption is that all the dependent variables are normally distributed.  The Shapiro-Wilk test can determine if a given variable has data point values that are significantly different from a normal distribution given the sample mean and standard deviation.  The multivariate form of this test, will look at all the variables _combined_.
+
+The second assumption of note is that the determinant of the variance-covariance matrix must be positive.  The variance-covariance matrix for three variables _a_, _b_, and _c_ are given below in equation (1).
+
+$$\begin{bmatrix} V_a & C_{a,b} & C_{a,c} \\ C_{a,b} & V_b  & C_{b,c} \\ C_{a,c} & C_{b,c} & V_c \end{bmatrix} \tag{1}$$
+As a reminder the formula for the covariance between two variables _x_ and _y_ are given in equation (2).
+
+$$\text{cov}_{x,y} = \frac{\sum_{i=1}^n \left( x_i - \bar{x}  \right) \left( y_i - \bar{y}  \right) }{n-1}\tag{2}$$
+
+All analyses must include consideration of the correlation between the dependent variables as this will effect the result.  Uncorrelated data will add unique variance to the results.
+
+Multicollinearity in the independent variables will explain variation among themselves and not the variance of the dependent variables.  It is proper practice to report on these whenever multivariate analysis is done.
+
+Specific assumptions include variance in the difference between paired values across time periods, if this type of data is included (sphericity assumption).  The same goes for population variances and covariances (compound symmetry).
+
+## Hotelling's $T^2$ test
+
+Equation (3) below serves as a reminder of an unpaired, equal variance _t_ test, where we compare the mean value for a single variable between two samples.  If these two means are $\bar{x}_1$ and $\bar{x}_2$ for the two samples size $n_1$ and $n_2$, then the _t_ statistic is as follows.
+
+$$t = \frac{\bar{x}_1 - \bar{x}_2}{\sqrt{\frac{\left( n_1 - 1 \right) s_1^2 + \left( n_2  - 1\right) s_2^2}{n_1 + n_2 - 2} \left( \frac{1}{n_1} + \frac{1}{n_2} \right)}}\tag{3}$$
+
+The Hotelling $T^2$ test compares the means of more than one variable between two samples.  We can construct a vector of means (one element for each of the variables).  This yields the vectors $\bar{X}_1$ and $\bar{X}_2$, with the $T^2$ value given is equation (4).
+
+$$T^2 = \frac{n_1 n_2}{n_1 + n_2} {\left( \bar{X}_1 - \bar{X}_2  \right)}^{T} \left(  S^{-1} \right)  \left( \bar{X}_1 - \bar{X}_2  \right)\tag{4}$$
+Here $S$ is the pooled covariance matrix (covariance matrix of each group weighted by the respective degrees of freedom) which is calculated as in equation (5), wherein $S_1$ and $S_2$ are the covariance matrices for the two samples.
+
+$$S = \frac{\left(n_1 - 1\right) S_1 + \left(n_2 - 1\right) S_2}{n_1 + n_2 -2}\tag{5}$$
+
+From this we can calculate a _F_ statistic with $d_1$ being the number of dependent variables and $d_2$ being $n_1 + n_2 - d_1 - 1$.  This is given in equation (6), which also shows an (algebraically) alternative form, where _n_ is the sample size, _k_ is the number of variables.
+
+$$F = \frac{d_1}{d_2} T^2 = \frac{n-k-1}{k \left( n - 2 \right)} T^2\tag{6}$$
+
+There are three _forms_ of Hotelling's $T^2$ test.  This is assuming equal variance.  In the first we compare a mean vector against a suggested vector of mean values.  In the second and most common form, we compare the mean vectors between two groups.  In the last form, we compare vectors of paired values.
+
+The null hypothesis that we will use in an example, states that there is no difference between the two vectors.  The alternative hypothesis will be two-tailed, stating that the vectors are not equal.
+
+Our example then will make use of an imported, comma separated value file.  It contains three numerical variables and a categorical variable.  We will use the latter, which contains two unique nominal categorical data point values to distinguish the two samples.
+
+```{r Data import, message=FALSE, warning=FALSE}
+data <- read_csv("Data.csv")
+datatable(data)
+```
+
+We can visual the data.
+
+```{r Data visualization of complaints, message=FALSE, warning=FALSE}
+f1 <- plot_ly(data,
+              type = "box") %>% 
+  add_boxplot(y = ~Complaints,
+              x = ~Group,
+              name = "Complaints") %>% 
+  layout(title = "Complaints",
+         xaxis = list(title = "Group"),
+         yaxis = list(title = "Complaints"))
+f1
+```
+
+```{r Data visualization of learning, message=FALSE, warning=FALSE}
+f2 <- plot_ly(data,
+              type = "box") %>% 
+  add_boxplot(y = ~Learning,
+              x = ~Group,
+              name = "Learning") %>% 
+  layout(title = "Learning",
+         xaxis = list(title = "Group"),
+         yaxis = list(title = "Learning"))
+f2
+```
+
+```{r Data visualization of raises, message=FALSE, warning=FALSE}
+f3 <- plot_ly(data,
+              type = "box") %>% 
+  add_boxplot(y = ~Raises,
+              x = ~Group,
+              name = "Raises") %>% 
+  layout(title = "Raises",
+         xaxis = list(title = "Group"),
+         yaxis = list(title = "Raises"))
+f3
+```
+
+We must now test for the assumption of normality.  The `mvnormtest` library provides the multivariate Shapiro-Wilk test named `mshapiro.test()`.  It can take a tibble as input, but only the numerical variables must exist in this tibble.  In the code chunk below, we remove the `Group` variable using the `select(-one_of())` function in `dplyr`.  The resultant new tibble is saved as `data.vars`.
+
+```{r Remove the Group variable}
+data.vars <- data %>% select(-one_of("Group"))
+```
+
+The `mshapiro.test()` function also requires the tibble be transposed.  This can be done using the `t()` function.
+
+```{r Shapiro-Wilk test}
+mvnormtest::mshapiro.test(t(data.vars))
+```
+
+The null hypothesis of the multivariate Shapiro-Wilk test states that the data is normally distributed and since the _p_ value is not less than a chosen $\alpha$ value of $0.05$, we cannot reject it.
+
+The second assumption that we will test is to show that the determinant of the variance-covariance matrix is positive.  The `cov()` function creates a variance-covariance matrix and the `det()` function will calculate the determinant.
+
+```{r Determinant of variance-covariance matrix}
+det(cov(data.vars))  # cov(data.vars) creates the variance-covariance matrix
+```
+
+Since the multivariate Shapiro-Wilk test is not significant and the determinant is positive, we conclude that we can use the Hotelling $T^2$ test.  In the code chunk below, we pass two matrices, one for rows that indicate a data point value of `I` for the `Group` variable and one that indicates a `II`.  The two matrices are extracted from the original tibble using the `dplyr::filter()` function.  Note that all the rows are chosen, but only columns $1$ through $3$, since we only want a matrix of the numerical variables.
+
+```{r Hotelling using the ICSNP library}
+HotellingsT2(filter(data,
+                    Group == "I")[, 1:3],
+             filter(data,
+                    Group == "II")[, 1:3])
+```
+
+```{r hotelling test using the Hotelling library}
+fit <- hotelling.test(filter(data,
+                             Group == "I")[, 1:3],
+                      filter(data,
+                             Group == "II")[, 1:3])
+fit
+```
+
+With a _p_ value not less than $0.05$ we cannot reject the null hypothesis and state that there is no multivariate difference between the two samples.
+
+
