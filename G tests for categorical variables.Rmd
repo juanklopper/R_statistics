@@ -1,0 +1,74 @@
+---
+title: "G tests for categorical variables"
+author: "Dr Juan H Klopper"
+output:
+  html_document:
+    toc: true
+    number_sections: false
+---
+
+```{r setup}
+knitr::opts_chunk$set(include = TRUE)
+```
+
+```{r Libraries, echo=TRUE}
+library(DescTools)
+```
+
+<style type="text/css">
+h1 {color:#1a2451;}
+h2 {color:#ffbd4a;}
+h3 {color:#1a2451;}
+</style>
+
+![](KRG elegant logo for light BG.png)
+
+## Introduction
+
+_G_ tests are helpful hypothesis test for categorical variables.  They are alternatives to the $\chi^2$ test of goodness of fit and the $\chi^2$ test of independence.
+
+As such they compare the observed counts of the unique sample space values of a categorical variable or variables against an expected count.
+
+## _G_ test of goodness of fit
+
+This hypothesis test looks at the observed counts for a single categorical variable.  Unlike the exact test of goodness of fit, a test statistic is calculated and then the probability of finding such as extreme statistic.  Whereas the exact test is a binomial test, the _G_ test of goodness of fit is a log-likelihood test.
+
+The null hypothesis of this test states that the observed counts are equal to that of predicted counts.  The _G_ statistic for this test is given in equation (1) under the _G_ test for independence.
+
+The `DescTools` package provides the `GTest()` function that takes a vector of observed counts and a vector of probabilities.
+
+In the example below we observe $175$ values for one of the two unique sample space data point values for a variable and $190$ for the other data point value.  We imagine that we expected a $50$:$50$ split.
+
+```{r G test of goodness of fit}
+obs <- c(175, 190)
+GTest(x = obs,
+      p = c(0.5, 0.5),
+      correct = "none")
+```
+
+We note that our finding was not significantly different from the expected.
+
+## _G_ test of independence
+
+The _G_ test is used as alternative to the $\chi^2$ test of independence.  The latter is in fact an approximation of the log-likelihood ratio on which the G test is based.  The equation for the _G_ test is given in (1).
+
+$$G=2 \sum_{i=1}^n \text{observed}_i \cdot \ln {\left( \frac{\text{observed}_i}{\text{expected}_i}  \right)} \tag{1}$$
+
+Here $n$ is the total sample size and every $i$ is a cell value in the contingency table.  The $\ln$ refers to the natural logarithm.
+
+The `GTest()` function is available in the `DescTools` library and is the same function as we used before.  It takes an observed (contingency) table as input when we want to use it as a test of independence.
+
+In the sample below, we use exactly the same simulated research project as used in the tutorial on tests for categorical variables (where we used the $\chi^2$ test of independence and found a _p_ value of $0.01124$).
+
+```{r GTest function}
+obs <- rbind(c(33, 44, 25),
+             c(11, 28, 30))
+DescTools::GTest(obs,
+                 correct = "none")
+```
+
+We find a small _p_ value and conclude that the two variables are dependent.
+
+## Conclusion
+
+These two tests are very similar to their $chi^2$ test counterparts.  The `DescTools` package makes for easy implementation in R.

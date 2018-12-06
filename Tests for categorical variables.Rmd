@@ -1,0 +1,125 @@
+---
+title: "Tests for categorical variables"
+author: "Dr Juan H Klopper"
+output:
+  html_document:
+    toc: true
+    number_sections: false
+---
+
+```{r Settings and libraries}
+setwd(getwd())  # Setting the working directory
+```
+
+
+<style type="text/css">
+h1 {color:#1a2451;}
+h2 {color:#ffbd4a;}
+h3 {color:#1a2451;}
+</style>
+
+```{r Inserting an image, include=FALSE}
+# The line of code below inserts a picture file
+```
+
+![](KRG elegant logo for light BG.png)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this tutorial we will take a look at the analysis of categorical data.  We will consider two types of tests.  In the first, we only have a single variable, where we count the unique sample space data point values and measure it against an expected count.  In the second, we actually explore the dependence between two categorical variables.
+
+In its simplest form then, we have a count of two or more unique sample space data point values for a categorical variable and an expected count for each of these.  If the sample space only contains two unique values, the expected count is _binomial_ and if there are more than two, we use the term _multinomial_.  As a simple example, we might have a fair die that we roll $1200$ times.  We count how many of each of the six possible values land face up and compare it against a known frequency that expects $200$ of each value.
+
+As mentioned, we can also look for dependence between two categorical variables.  Once again, we count the unique data point values for each and create a contingency table (a table of observations).  This allows us to construct an expected table to compare our observations to.
+
+## $\chi^2$ goodness of fit test
+
+In the first test, we will count the number of unique data point values for a categorical variable and compare them to an expected count.
+
+Let's consider a test in which we draw $100$ samples from a population and measure a multinomial, categorical variable with a sample space containing four values, i.e. _strongly disagree_, _disagree_, _agree_, _strongly agree_.  We might, for the sake of argument, expect a count of $25$ each.  When we look at our collected data, we find counts of $10$, $30$, $35$, $25$.
+
+If we label each observed count as $Y_i$, we have $Y_1 = 10$, $Y_2 = 30$, $Y_3 = 35$, and $Y_4 = 25$.  There are a total of $n = 100$ subjects and the expected probabilities, $p_i$ are $p_1 = 0.25$, $p_2 = 0.25$, $p_3 = 0.25$, and $p_4 = 0.25$.
+
+The standard form for these tests are shown in equation (1).
+
+$$\sum \frac{{\left( \text{observed - expected}  \right)}^2}{\text{expected}} \tag{1}$$
+
+For our example, we will have the equation shown in (2) below, where $n \times p_i$ is the expected count.
+
+$$\chi^2 = \sum \frac{{\left( Y_i - n p_i \right)}^2}{n p_i} \tag{2}$$
+
+Let's calculate the $\chi^2$ value by hand (code).  Once we calculate this test statistic, we can calculate a _p_ value based on the known $\chi^2$ distribution for the specific degrees of freedom.  In this case with four unique data point values and only a single variable we have $\text{df} = 4 - 1 = 3$, that is three degrees of freedom.  We use the `pchisq()` function to calculate the _p_ value.  Since we want to calculate the area under the curve from the statistic out towards positive infinity, we use the keyword argument `lower_tail = FALSE`.
+
+```{r Goodness of fit example by hand}
+y <- c(10, 30, 35, 25)  # Observed count
+p <- rep(0.25, 4)  # Expected probability
+n <- sum(y)  # Total number of subject
+chi2 <- sum((y - n * p)^2 / (n * p))
+chi2
+df <- 4 - 1
+pchisq(chi2,
+       df = df,
+       lower.tail = FALSE)
+```
+
+We note $\chi^2 = 14$.  For a chosen $\alpha = 0.05$ we have a significant result with a small _p_ value.
+
+We can also use the `chisq.test()` function that will do all of the calculations for us.
+
+```{r Goodness of fit using chisq.tes()}
+chisq.test(y,
+           p = p)
+```
+
+## $\chi^2$ test of independence
+
+This is the most common test for categorical data.  In essence, we want to see if two variables are independent of each other.  Consider then an experiment where we have a categorical variable with a sample space containing two values, i.e. the variable is _Group_ and the values are _I_, and _II_.  The second variable is _Outcome_ and the sample space is _Worse_, _Same_, and _Improve_.  These results might follow the administration of a new drug.  We collect data and find that there are `r 33 + 44 + 25` subjects in group I and `r 11 + 28 + 30` in group II.  A total of `r 33 + 11` worsened, `r 44 + 28` stayed the same, and `r 25 + 30` improved.  We can break this down with $33$ subjects in group I improving, $44$ staying the same, and $25$ improving.  In group II the counts are $11$, $28$, and $30$.  We can create a table of observations.  This is our observed (contingency) table.  In the code chunk below we add row and column names to clarify the findings.  (Note that this is not required for the purposes of analysis.)
+
+```{r Observed table for test of independence}
+obs <- rbind(c(33, 44, 25),
+             c(11, 28, 30))
+rownames(obs) <- c("Group I", "Group II")
+colnames(obs) <- c("Worse", "Same", "Improve")
+obs
+```
+
+Our research question is whether outcome is independent of which group the subject was in.  The null hypothesis states that the variables are independent (similar proportions in each).  Using the idea expressed in equation (1), we need to construct an _expected_ table.  Let's start with the number of expected subjects in group I that worsened.  The observed count was $33$.  Given that there was $44$ subjects who worsened and `r 33 + 44 + 25` subjects in group I, with a total of `r 33 + 44 + 25 + 11 + 28 + 30` subjects we expect a value of $44 \times 102 \div 171 = 26.2$.  For each of the six value we multiply the row and the column totals and divide this by the sum total.
+
+The `chisq.test()` will do all of this for us, including the calculation of a _p_ value.
+
+```{r Example of test of independence}
+chisq.test(obs,
+           correct = FALSE)  # Omit Yates correction
+```
+
+Once again we find a _p_ value less than $0.05$ and state that the outcome is not independent from the group in which the subject was.
+
+## Fisher's exact test
+
+The last test in this tutorial is Fisher's exact test.  The term exact stems from the fact that we are not approximating a distribution in the limit, but calculating a _p_ value as given in equation (4).
+
+$$p = \frac{\left( a + b \right)! \left( c + d \right)! \left( a + c \right)! \left( b + d \right)!}{a! b! c! d! \left( a + b + c + d \right)!}\tag{4}$$
+
+Here $a$, $b$, $c$, and $d$ refer to the four values in the contingency table marked from top-left to bottom-right.  Note that this is a $2 \times 2$ contingency table.  If one of the two categorical variables is not binomial, then a grouping of some of the unique sample space values will be required according to the judgement of the researcher(s).
+
+Fisher's exact test replaces both the $\chi^2$  for independence and _G_ test for independence when the data point values as small and we cannot rely on the $\chi^2$ distribution to accurately approximate our findings.
+
+The `fisher.test()` functions takes the contingency table (in matrix form) as argument.  (the table names are not required for the analysis.)
+
+```{r Fisher test}
+vals <- matrix(c(3, 1, 3, 2),
+               nrow = 2,
+               dimnames = list(Group = c("Control", "Experimental"),
+                               Outcome = c("Worsened", "Improved")))
+fisher.test(vals)
+```
+
+Whilst Fisher's exact test considers two categorical variables (it is a test of independence), there is an exact test that can be used for only a single variable (a goodness of fit test).
+
+## Conclusion
+
+Analyzing categorical variables is easy and the interpretation of the results is intuitive.  R has all the functions to conduct these tests.

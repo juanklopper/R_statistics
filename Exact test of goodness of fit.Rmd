@@ -1,0 +1,135 @@
+---
+title: "Exact test of goodness of fit"
+author: "Dr Juan H Klopper"
+output:
+  html_document:
+    toc: true
+    number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd(getwd())
+```
+
+<style type="text/css">
+h1 {color:#1a2451;}
+h2 {color:#ffbd4a;}
+h3 {color:#1a2451;}
+</style>
+
+![](KRG elegant logo for light BG.png)
+
+## Introduction
+
+The exact test of goodness of fit is used when comparing the proportions of the sample space of a nominal categorical variable against an expected proportion.  The test is termed _exact_ since we do not calculate a test statistic that measures how different our findings are from the expected values under a null hypothesis and then calculate the probability of getting a test statistic this or more extreme.  Instead, we calculate the _p_ value directly.
+
+Under the two-tailed, null hypothesis for this test, we state that the observed proportions are equal to the expected proportions.  For a one-tailed test, we state that for the null hypothesis that the observed number for one of the sample space values is equal to or less than expected.  In this case the alternative hypothesis is that the observed number is greater than expected.
+
+The alternatives to this test are the $\chi^2$ test or the _G_ test, both for goodness of fit.
+
+## Binomial exact goodness of fit test
+
+Here we only consider a dichotomous outcome, i.e. a sample space of two values for our nominal categorical variable.  If we consider one of these two values as a success, with a specified probability of occurring then we have a binomial distribution.  The equation for the binomial distribution uses $n$ as the number of trials, $k$ as the number of successes, and $p$ as the probability of a success.  The binomial distribution is given in equation (1).
+
+$$\frac{n! }{n! \left( n - k \right)!} p^k {\left( 1 - p \right)}^{n - k} \tag{1}$$
+
+Consider then that we collect data for a nominal categorical variable and find $2$ instances of _value1_ (our success) and eight instances of _value2_.  The probability of finding _value1_ is $50$%.  We can calculate the _p_ value using the `binom.test()` function.
+
+```{r Binomial test}
+n <- 10
+k <- 2
+p <- 0.5
+
+binom.test(k,
+           n,
+           p = p,
+           alternative = "two.sided",
+           conf.level = 0.95)
+```
+
+Since our outcomes are unique (_value1_ or _value2_), we can create a bar plot to show the probability of each number of _value1_ values to have appeared.
+
+```{r Barplot}
+n <- 10
+k <- 2
+p <- 0.5
+
+x <- seq(0, n)
+y <- dbinom(x,
+            size = n,
+            prob = p)
+
+barplot(height = y,
+        names.arg = x,
+        col = "deepskyblue",
+        main = "Probability of different numbers of sucesses",
+        xlab = "Number of successes",
+        ylab = "Probability under null hypothesis",
+        las = 1)
+```
+
+So, how did we get to a _p_ value of $0.1094$?  Consider that we are asking what the probability is of getting a value of $2$ or more extreme.  We therefore have to consider the probability of getting $0$, $1$, and $2$ successes.
+
+```{r Probability of 0 1 and 2 successes}
+s <- seq(0, 2)
+dbinom(s,
+       size = n,
+       prob = p)
+```
+
+We can sum these probabilities. 
+
+```{r Adding the successes}
+sum(dbinom(s,
+           size = n,
+           prob = p))
+```
+
+We are not done yet.  This was a two-tailed hypothesis, so we have to include $8$, $9$, and $10$ successes too.
+
+```{r Summing all the successes}
+sum(dbinom(c(0, 1, 2, 8, 9, 10),
+           size = n,
+           prob = p))
+```
+
+Note that this is simply twice the initial result and that the initial result could be seen as a one-tailed null hypothesis.
+
+## Method of small _p_ values
+
+Whilst this works well for an equal probability of a dichotomous outcome (giving us a symmetric curve), we have to consider what to do if the probability of success is not equal.  In the example below, we consider expecting a success proportion of $0.75$ and $15$ trials.
+
+```{r Nonsymmetric probability}
+n <- 15
+p <- 0.75
+x <- seq(0, n)
+y <- dbinom(x,
+            size = n,
+            prob = p)
+
+barplot(height = y,
+        names.arg = x,
+        col = "orange",
+        main = "Probability of different numbers of sucesses",
+        xlab = "Number of successes",
+        ylab = "Probability under null hypothesis",
+        las = 1)
+```
+
+Imagine then that we noted seven successes and eight failures.  How do we work out a _p_ value for a two-sided null hypothesis?  The short answer is that there is no agreement.  Many statisticians use the _small p value method_, though.  First we calculate the probability of the seven successes and the each of the other successes.  The _p_ value is then the sum of all the probabilities equal to or less than the probability for the seven successes.  Below we create a list of all the probabilities and the sum only the appropriate ones.
+
+```{r Small p value method}
+suc <- dbinom(seq(0, 15),
+              size = n,
+              prob = p)
+sum(suc[suc <= dbinom(7,
+                      size = n,
+                      prob = p)])
+```
+
+Since we expected to find about `r round(0.75 * 15, digits = 0)` successes, the probability of finding only seven is significant (for an $\alpha$ value of $0.05$).
+
+## Conclusion
+
+The exact goodness of fit test for binomial categorical variables is easy to use and implement in R.  Although this test can be generalized to multinomial categorical variables, it is more common to use the $\chi^2$ test of goodness of fit or even the _G_ test of goodness of fit.
