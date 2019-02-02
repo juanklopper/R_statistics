@@ -1,0 +1,263 @@
+---
+title: "Dealing with categorical variables"
+author: "Dr Juan H Klopper"
+output:
+  html_document:
+    toc: true
+    number_sections: false
+---
+
+<style type="text/css">
+h1 {color:#1a2451;}
+h2 {color:#ffbd4a;}
+h3 {color:#1a2451;}
+</style>
+
+```{r Inserting an image, include=FALSE}
+# The line of code below inserts a picture file
+```
+
+![](KRG elegant logo for light BG.png)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd(getwd())  # Setting the working directory
+```
+
+```{r Libraries, message=FALSE, warning=FALSE}
+library(readr)
+library(dplyr)
+library(forcats)
+```
+
+
+## Introduction
+
+Categorical variables are commonly included in datasets.  They (usually) consist of a finite sample space of data point values that are either _nominal_ in nature, i.e. characters and strings without a natural order, or _ordinal_ in nature, that is, symbols that can be placed in a natural order.
+
+An example of the former is a binary variable such as _Smoking_ (assuming that there are no _unknown_ cases).  A patient either smokes or does not, so the sample space would have the elemnts _yes_ and _no_.
+
+A survey is a great example of ordinal categorical variables.  Patients might be asked to rate their pain on a scale of 0 (no pain) to 10 (unbearable pain).  There is a natural order to the elements of the sample space, but no fixed difference between each element.  It is therefor not a numerical variable.
+
+When using strings and characters, R assigns the elements in the sample sapce of a categorical variable a __factor__ type.  The factor type has many benefits, but can also get in the way of your data analysis.  By default, libraries in the _tidyverse_ do not assign this type to character and string elements.  To make use of the benefits of factors, we need to use the _forcats_ library.
+
+## Creating factors
+
+In the code cell below, we create a string vector for a hypothetical project.  One of the statistical variables might capture the type of lung disease that a patient has.  The sample space includes the elements _None_, _COPD_, _Chronic bronchitis_, and _Asthma_.
+
+```{r Lung disease object for 10 patients}
+lung_disease <- c("None", "None", "COPD", "None", "Asthma",
+                  "Asthma", "Chronic bronchitis", "None", "Asthma", "COPD")
+```
+
+One problem with this dataset might become apparent when we want to sort the data point values.
+
+```{r Sorting the lung diseases variable}
+sort(lung_disease)
+```
+
+By default, sorting will be alphabetical.  This might not be your intention, though.  Turning the _lung\_disease_ object into a factor will help in changing this behavior.  The first step is to create your own order.  This is referred to as creating _levels_ (the elements in the sample space of the variable).
+
+```{r Creatinglung disease levels}
+lung_disease_levels <- c("None", "Asthma", "Chronic bronchitis", "COPD")
+```
+
+Now we can create a factor object.
+
+```{r Creating a factor type object}
+lung_disease_factor <- factor(lung_disease,
+                              levels = lung_disease_levels)
+```
+
+Sorting will now occur according to the levels.
+
+```{r Sorting according to the levels}
+sort(lung_disease_factor)
+```
+
+The `sort()` function returns both the sorted data point values and the sorted sample space.
+
+The use of the `factor()` function can aid in detecting misspelled words, i.e. data point values that are not in the sample space for the variable in question.  Below we use the `append()` function to add just such a data point value.
+
+```{r Adding adata pointvalue outside of the sample space}
+lung_disease <- append(lung_disease, "CPOD")  # Incorrect spelling
+```
+
+Let's create a new factor from using the original levels, this time using the _parse\_factor()_ function from the `readr` library.
+
+```{r Using the readr library}
+lung_disease_factor_2 <- parse_factor(lung_disease,
+                                      levels = lung_disease_levels)
+```
+
+R actually returns a warning!  It tells use that _CPOD_ is not a level (sample space element).
+
+## Importing data files
+
+Let's have a look at the behavior of a `csv` data file import that contains categorical variables.  Below, we create two objects from the data file.  The first uses the `read.csv()` base function.  It creates a `data.frame` object.  The `read_csv()` function from the `readr` library creates a `tibble` object.
+
+```{r Importing as a data.frame}
+data_1 <- read.csv("Data_forcats.csv")
+```
+
+We can take a quick look at the statistical variables in the data file.
+
+```{r Variables}
+names(data_1)
+```
+
+The _City_ variable is nominal categorical.  Let's print all the data point values.
+
+```{r Showing all the data point values in the City variable for the data frame}
+data_1$City
+```
+
+These are clearly strings.  When we use the `typeof()` function, though, we note that the variable has an `integer` data type.
+
+```{r Type of data_1 City variable}
+typeof(data_1$City)
+```
+
+This is because this variable is seen as a factor.  We can use the `levels()` function as before, to look at the sample space of the variable.
+
+```{r Sample space of the City variable in data_1}
+levels(data_1$City)
+```
+
+Now, let's use the `read_csv()` function from the `readr` library.  It creates a `tibble` object that does not convert a categorical variable into a factor.
+
+```{r Import using readr, message=FALSE, warning=FALSE}
+data_2 <- readr::read_csv("Data_forcats.csv")
+```
+
+The actual data point values are still the same.
+
+```{r Showing all the data point values in the City variable for the tibble}
+data_2$City
+```
+
+They are, though, of a type that we would expect, i.e. the `charater` type.
+
+```{r Type of data_2 City variable}
+typeof(data_2$City)
+```
+
+Unfortunately, we lose the ability to return the sample space with the `levels()` function, as the variable is no longer a factor.
+
+```{r There are no levels in the tibble as there are no factors}
+levels(data_2$City)
+```
+
+using the design ethos of the `tidyverse`, we can still get the sample space incorporating the `count()` function.
+
+```{r Sample space by using the count function}
+data_2 %>% dplyr::count(City)
+```
+
+We can order the counts too with the `sort = TRUE` argument.
+
+```{r Sample space by using the count function (with sorting of size)}
+data_2 %>% dplyr::count(City,
+                        sort = TRUE)
+```
+
+Note that in both cases, the result is a tibble.
+
+## The `forcats` library
+
+To use the advantages of factors in tibbles, we can use the `forcats` library.  It contains many useful functions.  Below we turn the `data_2` tibble object's _City_ variable into a factor using the `as_factor()` function.  This becomes the argument in the `fct_unique()` function so that we can view the sample space of the variable.
+
+```{r Unique elements}
+forcats::fct_unique(forcats::as_factor(data_2$City))
+```
+
+### Returning the sample space of a variable
+
+The `fct_unique()` function shows the elements of the sample space of the _City_ variable in the order in which they appear and then lists them again as factor levels.
+
+Using the pipe operator, ` %>% `, we can do the same in a `tidyverse` way.
+
+```{r Showing sample space}
+data_2$City %>% as_factor() %>% fct_unique()
+```
+
+The `fct_count()` function returns a tibble with two columns.  The first is the elements in the sample space and the second is the count of each of the elements in the dataset.
+
+###  Returning a count of the elements of a sample space
+
+```{r Showing sample space and counts}
+data_2$City %>% as_factor() %>% fct_count()
+```
+
+While we explicitly converted the _City_ variable into a factor, the code chunk below shows that it is not necessary.  Using the `forcats` functions will turn a variable (vector object in this case) into factor.  Below we create the same tibble as before, but this time we sort the order by count.
+
+```{r Showing ordered sample space by counts}
+data_2$City %>% fct_count(sort = TRUE)
+```
+
+We can also return a simple table using the `table()` base function.
+
+```{r Count with alphabetical element order presented as a table}
+data_2$City %>% table()
+```
+
+The result is an alphabetical list.  We can use the `fct_inorder()` function to change this to a descending count order.
+
+```{r Count with size order presented as a stable}
+data_2$City %>% fct_inorder() %>% table()
+```
+
+### Lumping levels together
+
+In this dataset we have a sample space with $10$ elements.  It is not always practical or important to show all of the elements.  We can lump unimportant elements and their count into an _Other_ element using the `fct_lump()` function.  In the code chunk below, we use the argument `n = 3` to return at least three elements.  Ties are included.
+
+```{r Show 3 most common (including ties) and place in size order}
+data_2$City %>% fct_lump(n = 3) %>% fct_inorder() %>% table()
+```
+
+We note one two-way tie and a three-way tie, so they are all included in the top three.  If there was another tie of say two counts of $55$, they will not be shown, as we are already exceeding three elements, although they will technically be tied for third place.
+
+With negative numbers, we can show only the rarest elements in the sample space.
+
+```{r Show least common 2 (including ties) and place in order}
+data_2$City %>% fct_lump(n = -2) %>% fct_inorder() %>% table()
+```
+
+Lumping data together really helps with plotting.  Below is a bar chart for `n = 3` elements.
+
+```{r}
+barplot(data_2$City %>% fct_lump(n = 3) %>% fct_inorder() %>% table(),
+        main = "Frequency of cities",
+        col = "orange",
+        xlab = "City",
+        ylab = "Count",
+        las = 1)
+```
+
+### Collapsing and renaming levels
+
+Any elements in the sample space of a categorical variable can be lumped together and even renamed.  In the code chunk below, we use the`fct_collapse()` function to collapse the levels into _USA_, _EU_, and _Other_.
+
+```{r Collapsing levels manually}
+data_2$City %>% 
+  fct_collapse(USA = c("NY", "SF", "LA", "SD"),
+                             EU = c("London", "Paris", "Berlin", "Amsterdam"),
+                             Other = c("Cape Town", "Sydney")) %>% 
+  fct_inorder() %>% 
+  fct_count()
+```
+
+### Renaming levels
+
+Levels can be renamed manually using the `fct_recode()` function.  Below, we change _Cape Town_ to _CT_
+
+```{r Renaming levels}
+data_2$City %>% 
+  fct_recode(CT = "Cape Town") %>% 
+  fct_inorder() %>% 
+  fct_count()
+```
+
+### Learn more
+
+There are more functions in the `forcats` library.  You can find out more about them at https://rdrr.io/cran/forcats/man/ 
