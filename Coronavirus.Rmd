@@ -1,0 +1,239 @@
+---
+title: "Coronavirus SA"
+author: "Dr Juan H Klopper"
+date: "28/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd(getwd())
+```
+
+![](KRG_elegant_logo_for_light_BG.png)
+
+## INTRODUCTION
+
+There are numerous analyses on the internet and in research papers regarding COVID-19. Data from the pandemic is very useful for creating educational material. The Johns-Hopkins University (JHU) data repository contains large open data sets on the pandemic.
+
+In this notebook, I showcase the use of this data resource.  The aims are as follows:
+
+1. Use the JHU data as teaching material for the R language
+2. Use the JHU data as teaching material for data analysis
+3. Compare data between countries (South Africa, Germany, United Kingdom)
+4. Look ahead at what may happen in South Africa in early 2021
+
+
+## LIBRARIES
+
+The following libraries are imported for use in this notebook.
+
+```{r Libraries, message=FALSE, warning=FALSE}
+library(readr) # Importing the data from the internet
+library(plotly) # Creating data visualization
+library(DT) # Create tables
+```
+
+
+## DATA
+
+The data exists in a JHU Github repository and is regularly updated.  The `readr::read_csv()` function can import data from the repository, which exists as a comma-separated-values (spreadsheet) file.
+
+```{r Data download as a tibble, message=FALSE, warning=FALSE}
+confirmedraw <- readr::read_csv("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv")
+```
+
+The data set is in wide format.  Days are added as columns.  The rows consist of countries and regions.  The `names()` function shows all the column headers
+
+```{r Column headers}
+names(confirmedraw)
+```
+
+We note that the first four columns are "Province/State", "Country/Region", "Lat", and "Long".  The rest are dates starting on 22 January 2020.
+
+As this data set is updated daily, the number of columns will change daily.  In the code chunk below, we create a variable to show how many columns there are in the file above.  The `ncol()` function return the number of columns.  We store this value in a computer variable named `last.day.number`.  If the data is run on subsequent days, we need to manually look for the last date.
+
+```{r Last column number}
+last.day.number <- ncol(confirmedraw)
+```
+
+The date column headers are stored as strings.  In the code cell below, we extract the last column header (last date in the current data set) and save it is a date object using the `as.Date()` function.  This date is stored in a computer variable called `last.date`.
+
+```{r Save last date as a Date object}
+last.date <- as.Date(names(confirmedraw[1, ncol(confirmedraw)]), "%m/%d/%y")
+```
+
+
+## EXTRACTING DATA FROM SOUTH AFRICA
+
+We can search for `South Africa` in the `Country\Region` column and extract only the row of data pertaining to this country.
+
+```{r Extracting only data for South Africa}
+sa <- confirmedraw[confirmedraw$`Country/Region` == "South Africa", ]
+```
+
+Since the data is in wide format, we can extract the actual case values as a vector object.  The `as.numeric()` function is used below.  We index the first (and only) row and then column $5$ to the last column (stored as `last.day.number`).  We also create a sequence of dates from 22 January 2020 to the last date in the data set stored as `last.date`.  We name the case number vector `sa.cases` and the date sequence `dates`.  The latter is created using the `seq()` function.
+
+```{r Creating a vector to hold the cases and a date sequence}
+sa.cases <- as.numeric(sa[1, 5:last.day.number])
+dates <- seq(as.Date("2020/01/22"), last.date, "days")
+```
+
+Now we store the two vectors as columns in a new data frame object named `df`.  The data frame is in long form.
+
+```{r Creating an instance of a  long form data frame}
+df <- data.frame(Day = dates, RSACases = sa.cases)
+```
+
+The `datatable` function from the DT package can be used to view the new data frame object.
+
+```{r Viewing the new data table object}
+DT::datatable(df)
+```
+
+
+## VISUALIZING SOUTH AFRICAN DATA
+
+The number of cases in our data frame object is a rolling total.  Below, we use the plotly library to plot a date list plot.
+
+```{r Total cases plot for RSA}
+plot_ly(x = df$Day, y = df$RSACases, mode = "markers", type = "scatter", name = "RSA") %>% 
+  layout(title = "Total cases in South Africa",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Number of cases"))
+```
+
+We notice that the second wave is well under way.  We can create a new column to show the daily number of new cases.  This is achieved by subtracting the previous day's running total from the current day.  It is achieved using the `lag()` function from the dplyr library.
+
+```{r Creating a daily new cases column}
+df$RSADaily <- df$RSACases - dplyr::lag(df$RSACases, n = 1)
+```
+
+Below, we visualize the new cases per day for South Africa.  The vertical lines segments indicate the dates on which various levels of lockdown were instituted.
+
+```{r Daily new cases for RSA, message=FALSE, warning=FALSE}
+plot_ly(x = df$Day, y = df$RSADaily, mode = "markers", type = "scatter", name = "RSA") %>% 
+  add_segments(x = as.Date("2020-03-26"), xend = as.Date("2020-03-26"), y = 0, yend = 14000, name = "Level 5") %>% 
+  add_segments(x = as.Date("2020-05-01"), xend = as.Date("2020-05-01"), y = 0, yend = 14000, name = "Level 4") %>% 
+  add_segments(x = as.Date("2020-06-01"), xend = as.Date("2020-06-01"), y = 0, yend = 14000, name = "Level 3") %>% 
+  add_segments(x = as.Date("2020-08-01"), xend = as.Date("2020-08-01"), y = 0, yend = 14000, name = "Level 2") %>% 
+  layout(title = "Daily cases in South Africa",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Number of cases"))
+```
+
+
+## ADDING GERMANY AND THE UNITED KINGDOM FOR COMPARISON
+
+Countries in Europe are ahead in the COVID-19 time line with respect to South Africa.  Two countries with a similar population size are Germany and the United Kingdom.  In the code chunk below, we go through the same steps as before to add data for Germany to our data frame object.
+
+```{r Adding data for Germany}
+germany <- confirmedraw[confirmedraw$`Country/Region` == "Germany", ]
+germany.cases <- as.numeric(germany[1, 5:last.day.number])
+df$GermanyCases <- germany.cases
+df$GermanyDaily <- df$GermanyCases - dplyr::lag(df$GermanyCases, n = 1)
+```
+
+We can now visualize the difference between South Africa and Germany with respect to the total number of cases.
+
+```{r Total number of cases in RSA and Germany}
+plot_ly(x = df$Day, y = df$RSACases, mode = "markers", type = "scatter", name = "RSA") %>% 
+  add_trace(x = df$Day, y = df$GermanyCases, mode = "markers", type = "scatter", name = "Germany") %>% 
+  layout(title = "Total cases in South Africa and Germany",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Number of cases"))
+```
+
+We notice that there are more cases in Germany than in South Africa.  We also note that we lag behind in the time line.  However, South Africa has a lot more total number of cases after the first wave.
+
+Below, we also view the difference in the daily number of cases.
+
+```{r Daily new cases in RSA and Germany, message=FALSE, warning=FALSE}
+plot_ly(x = df$Day, y = df$RSADaily, mode = "markers", type = "scatter", name = "RSA") %>% 
+  add_trace(x = df$Day, y = df$GermanyDaily, mode = "markers", type = "scatter", name = "Germany") %>% 
+  layout(title = "Daily cases in South Africa and Germany",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Number of cases"))
+```
+
+The comparison might not be fair due to a total population difference of about $20000000$ people.  The actual population size of these countries are not known, especially in South Africa.  Below, we store the official 2018 population sizes and express it per $100000$ people.
+
+```{r Population sizes for RSA and German per 100K people}
+sa.population <- 57780000 / 100000
+germany.population <- 83020000 / 100000
+```
+
+We can now add new columns to our data frame object and express the total number of cases and the daily cases per $100000$ people.
+
+```{r Population sizes}
+sa.population <- 57780000 / 100000
+germany.population <- 83020000 / 100000
+```
+
+```{r Adding new columns per 100K people}
+df$RSACasesPC <- df$RSACases / sa.population
+df$RSADailyPC <- df$RSADaily / sa.population
+df$GermanyCasesPC <- df$GermanyCases / germany.population
+df$GermanyDailyPC <- df$GermanyDaily / germany.population
+```
+
+We can visualize this normalized data for the total number of cases and the daily cases.
+
+```{r Total number cases in RSA and Germany per 100K people}
+plot_ly(x = df$Day, y = df$RSACasesPC, mode = "markers", type = "scatter", name = "RSA") %>% 
+  add_trace(x = df$Day, y = df$GermanyCasesPC, mode = "markers", type = "scatter", name = "Germany") %>% 
+  layout(title = "Total cases in South Africa and Germany per 100K people",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Number of cases"))
+```
+
+```{r Daily cases in RSA and Germany per 100K people, message=FALSE, warning=FALSE}
+plot_ly(x = df$Day, y = df$RSADailyPC, mode = "markers", type = "scatter", name = "RSA") %>% 
+  add_trace(x = df$Day, y = df$GermanyDailyPC, mode = "markers", type = "scatter", name = "Germany") %>% 
+  layout(title = "Daily cases in South Africa and Germany per 100K people",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Number of cases"))
+```
+
+We go through this exercise again and add the United Kingdom (UK).  There are $11$ rows containing data for the UK.  The first are for its territories and the last is for the UK proper.
+
+```{r Repeating addition to the data frame object for the UK}
+uk <- confirmedraw[confirmedraw$`Country/Region` == "United Kingdom", ][11, ]
+uk.cases <- as.numeric(uk[1, 5:last.day.number])
+df$UKCases <- uk.cases
+df$UKDaily <- df$UKCases - dplyr::lag(df$UKCases, n = 1)
+uk.population <- 66650000 / 100000
+df$UKCasesPC <- df$UKCases / uk.population
+df$UKDailyPC <- df$UKDaily / uk.population
+```
+
+Finally, we visualize the total cases and the daily cases for all three countries.
+
+```{r Total cases per 100K for all three countries}
+plot_ly(x = df$Day, y = df$RSACasesPC, mode = "markers", type = "scatter", name = "RSA") %>% 
+  add_trace(x = df$Day, y = df$GermanyCasesPC, mode = "markers", type = "scatter", name = "Germany") %>% 
+  add_trace(x = df$Day, y = df$UKCasesPC, mode = "markers", type = "scatter", name = "UK") %>% 
+  layout(title = "Total cases in RSA, Germany, and the UK per 100K people",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Number of cases"))
+```
+
+```{r Daily cases per 100K for all three countries, message=FALSE, warning=FALSE}
+plot_ly(x = df$Day, y = df$RSADailyPC, mode = "markers", type = "scatter", name = "RSA") %>% 
+  add_trace(x = df$Day, y = df$GermanyDailyPC, mode = "markers", type = "scatter", name = "Germany") %>% 
+  add_trace(x = df$Day, y = df$UKDailyPC, mode = "markers", type = "scatter", name = "UK") %>% 
+  layout(title = "Daily cases in RSA, Germany, and the UK per 100K people",
+         xaxis = list(title = "Date"),
+         yaxis = list(title = "Number of cases"))
+```
+
+
+## CONCLUSION
+
+South Africa lags behind in the time line of COVID-19.  Cases in South Africa were much higher after the first wave.  It may be that the case load will be very high in the first part of 2021.
+
+While we do consider that a current strain of SARS-CoV-2 is more infective, there might be confounding factors as there is great concern about human activities and interactions, especially since the progressive lifting of restrictions.  The festive season may worsen upcoming case numbers.
+
+Seroprevalence studies in South Africa are showing a a much higher level of infection than confirmed cases report.  Vaccines will take the better part of 2021 to reach large parts of South Africa.  
+
+
