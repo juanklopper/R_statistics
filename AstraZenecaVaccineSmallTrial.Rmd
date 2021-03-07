@@ -1,0 +1,136 @@
+---
+title: "Astra Zeneca vaccine trial"
+author: "Dr Juan H Klopper - Research Fellow Stellenbosch University"
+date: "02/03/2021"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+![](KRG_elegant_logo_for_light_BG.png)
+
+## Libraries
+
+```{r Libraries, message=FALSE, warning=FALSE}
+library(plotly)
+```
+
+
+## Introduction
+
+In this notebook, we simulate the results from a paper on the outcome of the use of the first Astra Zeneca vaccine for SARS-CoV-2. This trial recruited healthy, sero-negative (younger) individuals for randomization to placebo or vaccine administration. Cases of COVID-19 were recorded commencing two weeks after the second administration of the vaccine or placebo. At the time of recording, the paper available at https://www.medrxiv.org/content/10.1101/2021.02.10.21251247v1 
+
+## Pertinant points from study
+
+* The primary endpoint was efficacy against NAAT-confirmed symptomatic Covid-19 occurring more than 14 days after the 2nd injection in participants who were seronegative at randomization.
+* For the primary efficacy analyses, only per-protocol seronegative participants were included. Vaccine efficacy was calculated as 1- the relative risk and 95% CI were calculated using the Clopper-Pearson exact method are reported.
+* Overall, 1,010 participants received vaccine and 1,011 received placebo.  There were 1,467 (750 vaccinees and 717 placebo) Covid-19- naive participants eligible for the primary VE analysis.
+* The median age was 31 years, 56.5% identified as male gender, and the racial distribution included 70.5% black-Africans, 12.8% whites and 14.9% identifying as “mixed” race. Nineteen percent of enrolees were obese (BMI≥30-40 kg/m2), 42.0% were smokers, 2.8% had underlying hypertension and 3.1% had chronic respiratory conditions. The median duration between doses was 28 days; and the median duration of follow-up from enrolment and from 14 days after the second dose of injection were 156 and 121 days, respectively.
+* All forty-two endpoint cases were graded either as mild (vaccinees=15; placebo-recipients=17) or moderate (vaccinees=4; placebo-recipients=6) with no cases of severe disease or hospitalization in either arm.
+* The incidence (per 1000 person-years) of Covid-19 more than 14 days after the 2nd dose among sero-negative participants, and subsequent NAAT confirmed infection through to 14 days post second injection, was 93.6 and 73.1 in placebo and vaccine recipients, respectively.
+
+Based on the findings of this study, the roll-out of the vaccine was discontinued in South Africa.
+
+In the code below, we calculate the relative risk and use resampling to calculate confidence intervals for the relative risk.
+
+## Code
+
+We start with the sample sizes.
+
+```{r Sample and affected sizes}
+n_control <- 717
+n_treatment <- 750
+
+a_control <- 17 + 6 # Mild and moderate cases
+a_treatment <- 15 + 4
+```
+
+Next, we calculate the risk for each group.
+
+```{r Risk in each group}
+risk_control <- a_control / n_control
+
+risk_treatment <- a_treatment / n_treatment
+```
+
+From this follows the relative risk and efficacy.
+
+```{r Relative risk}
+relative_risk <- risk_treatment / risk_control
+relative_risk
+```
+
+```{r Efficacy}
+efficacy <- 1 - relative_risk
+efficacy
+```
+
+As in the main notebook, we create a function to simulate risk given a sample size and probability of developing COVID-19.
+
+```{r Simulating a positve outcome}
+simulate_group <- function(n, p){
+  xs = runif(n)
+  k = sum(xs < p)
+  return(k / n)
+}
+```
+
+We also use the function that simulates the relative risk and returns the efficacy.
+
+```{r Two group risk simulation}
+simulate_trial <- function(n1, p1, n2, p2){
+  risk1 = simulate_group(n1, p1)
+  risk2 = simulate_group(n2, p2)
+  efficacy = 1 - risk2 / risk1
+  return(efficacy)
+}
+```
+
+A single trial is simulated below.
+
+```{r Running the trial once}
+p1 <- a_control / n_control
+p2 <- a_treatment / n_treatment
+simulate_trial(n_control, p1, n_treatment, p2)
+```
+
+Now we simulate $1000$ trials and capture the relative risk of each.
+
+```{r Simulating 1000 trials}
+t2 <- comprehenr::to_vec(for (i in 1:1000) simulate_trial(n_control, p1, n_treatment, p2))
+```
+
+A density plot visualizes the relative risk values.
+
+```{r KDE plot of relative risk}
+density <- density(t2)
+
+fig <- plot_ly(
+  x = ~density$x,
+  y = ~density$y,
+  type = 'scatter',
+  mode = 'lines',
+  fill = 'tozeroy')
+fig <- fig %>% layout(
+  title = "Kernel density estimate",
+  xaxis = list(title = "Efficacy",
+               zeroline = F),
+  yaxis = list(title = "Density")
+)
+
+fig
+```
+
+It remains to calculate the $95$% confidence intervals for the efficacy.
+
+```{r Ninety five percent CI around the efficacy}
+t2_uncertainty <- unname(quantile(t2, probs = c(0.025, 0.975)))
+t2_uncertainty
+```
+
+Comment below on what you think about these confidence intervals.
