@@ -1,0 +1,224 @@
+---
+title: "Quantifying the precision of risk through resampling"
+author: "Dr Juan H Klopper - Research Fellow Stellenbosch University"
+date: "02/03/2021"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd(getwd())
+```
+
+![](KRG_elegant_logo_for_light_BG.png)
+
+## Libraries
+
+```{r Libraries, message=FALSE, warning=FALSE}
+library(comprehenr)
+```
+
+## Introduction
+
+This notebook examines the effect of randomness on risk and how to calculate and express uncertainty in risk due to randomness.
+
+Consider a blinded, controlled, clinical trial where subjects are randomized to either a placebo or an active intervention. During the current pandemic, vaccination is a good example. Many people are recruited and randomly assigned to either receive a placebo injection (control group) or an experimental vaccine (treatment group). The outcome variable measures whether they develop COVID-19.
+
+Risk, risk reduction, and relative risk are all measures to quantify the efficacy of an intervention versus a placebo in randomized trials. In these cases the concern is the outcome pertaining to a single variable. This variable is binary (nominal categorical). One of the two outcomes is chosen as the positive outcome (not necessarily positive in sentiment). In the example above, a positive outcome would be _contracting the disease_.
+
+### Risk
+
+__Risk__ or __cumulative incidence__ is the proportion of people with a positive outcome in a group and is defined in (1).
+
+$$\text{risk} = \frac{\text{number of positive outcomes}}{\text{total in group}} \tag{1}$$
+
+### Risk difference
+
+__Risk difference__ (RD) or __absolute risk reduction__ (ARR) is the simple difference between the risks of two groups and is given in (2).
+
+$$\text{risk difference} = \text{risk}_{\text{control}} - \text{risk}_{\text{treatment}} \tag{2}$$
+
+Here it is assumed that the risk in the control group is larger than the risk in the treatment group (especially when using the term ARR). If this is not the case, then the subtraction order changes around and the RD shows an increase in risk given the treatment versus the placebo.
+
+### Number needed to treat
+
+The __number needed to treat__ (NNT) is the reciprocal of the RD, given in (3).
+
+$$\text{number needed to treat} = \frac{1}{\text{absolute risk reduction}} \tag{3}$$
+
+NNT indicates the number of people needed to treat with the intervention for one person to benefit.
+
+### Relative risk
+
+__Relative risk__ is the ratio of risk between two groups, given in (4).
+
+$$\text{relative risk} =  \frac{\text{risk}_{\text{intervention}}}{\text{risk}_{\text{control}}} \tag{4}$$
+
+Here the risk of the intervention group is in the numerator. It is postulated that the risk of the positive outcome in this group will be lower. The ratio will then be lower than $1.0$ and inform a reduction in risk compared to the control group.
+
+### Efficacy
+
+Equation (5) is a piecewise function. In the first case, the risk in the treatment group is smaller than in the control group. In the latter case, the reverse is true and the efficacy expresses an increase in risk.
+
+$$\text{efficacy} = \begin{cases} 1 - \text{relative risk} & \text{risk}_{\text{treatment}} < \text{risk}_{\text{control}} \\ \text{relative risk} - 1 & \text{risk}_{\text{treatment}} > \text{risk}_{\text{control}} \end{cases} \tag{5}$$
+
+The result (when multiplied by $100$) expresses a percentage reduction (or then an increase) in the risk for the positive outcome given the intervention versus the placebo.
+
+## An example using code
+
+The code below simulates two groups. The `n_control` variable shows $20500$ people in the control group and the `n_treatment` variable shows $20600$ people in the treatment group, representing the sample sizes for each group in a vaccine trial.
+
+```{r Sample sizes}
+n_control <- 20500
+n_treatment <- 20600
+```
+
+In this trial $350$ people in the control group develop the positive outcome (contract the disease) and $115$ in the treatment group develop the positive outcome. These values are assigned to the variables `a_control` and `a_treatment`.
+
+```{r Positive outcomes}
+a_control <- 350
+a_treatment <- 115
+```
+
+There are `r round(350 / 115, digits = 2)` times more positive cases in the control group than in the treatment group.
+
+The risk in each group is calculated below.
+
+```{r Risk control group}
+risk_control <- a_control / n_control
+risk_control
+```
+
+The risk in the control group is `r round(risk_control, digits=5)`.
+
+```{r Risk treatment group}
+risk_treatment <- a_treatment / n_treatment
+risk_treatment
+```
+
+The risk in the treatment group is `r round(risk_treatment, digits=5)`. This seems substantially less. The relative risk is calculated below.
+
+```{r Relative risk}
+relative_risk <- risk_treatment / risk_control
+relative_risk
+```
+
+The risk of getting a positive outcome (developing the disease) in the treatment group is `r round(relative_risk, digits = 1)` times the risk of a positive outcome in the control group.
+
+This fraction less than $1.0$ means that there is a reduction in risk. This efficacy is calculated below using (5).
+
+```{r Efficacy}
+efficacy <- 1 - relative_risk
+efficacy
+```
+
+This result of efficacy can be expressed by stating that the treatment reduces the risk by `r round(efficacy * 100, digits = 1)`%.
+
+While this was the result of a specific (mock) study, there is a need to express uncertainty in these results.
+
+## Simulating risk uncertainty
+
+Below is a function `simulated_group()` that takes two parameters: `n` is the sample size and `p` is the probability of a positive outcome. A total of `n` values are generated from a uniform distribution with a minimum of $0$ and a maximum of $1$.  The variable `k` sums all the random values less than `p`. This is taken as the total number of positive cases, returned per $1000$ people.
+
+```{r Simulating a positve outcome}
+simulate_group <- function(n, p){
+  xs = runif(n)
+  k = sum(xs < p)
+  return(k / n)
+}
+```
+
+The number of positive cases in the treatment group and the sample size of the treatment groups is taken from above to calculate a probability, `p`, to pass as a parameter value to the function. The actual sample size is used for `n`.
+
+```{r A single simulation}
+p <- a_treatment / n_treatment
+single_simulation <- simulate_group(n_treatment, p)
+single_simulation
+```
+
+The result is a simulated (estimated risk) of `r round(single_simulation, digits = 1)`. Since the pseudo-random number generator was not seeded, this value will be different each time the code is executed.
+
+Below, this experiment, with the same parameter values, is repeated $1000$ times. The code makes use of the `comprehenr` library for list (or vector) comprehension.
+
+```{r Simulate the experiment 1000 times}
+t <- comprehenr::to_vec(for (i in 1:1000) simulate_group(n_treatment, p))
+```
+
+The distribution of these $1000$ efficacy values can be plotted using a kernel density estimate plot.
+
+```{r Visualizing distribution of efficacy}
+plot(
+  density(t),
+  col = "deepskyblue",
+  main = "Kernel density estimate",
+  xlab = "Risk",
+  las = 1
+)
+```
+
+The mean of these simulated values is `r round(mean(t), digits = 1)` and the actual risk was `r round(risk_treatment, digits = 1)`.
+
+Randomness introduces variation in the risk values. This can be quantified in a number of ways. One is the standard error in the risk, calculated below as the standard deviation of the risk.
+
+```{r Standard error in the risk}
+standard_error <- sd(t)
+standard_error
+```
+
+The variation due to randomness can also be quantified by calculating values for certain percentiles. The `quantile()` function calculates the values in the vector of simulated risk values for the given percentiles. This produces confidence intervals (CI) for a given confidence level. The latter is chosen to be $90$% in the code below.
+
+```{r Ninety percent CI}
+confidence_interval <- quantile(t, probs = c(0.05, 0.95))
+confidence_interval
+```
+
+## Simulating relative risk
+
+The function below simulates risks for two groups, returning the efficacy.
+
+```{r Two group risk simulation}
+simulate_trial <- function(n1, p1, n2, p2){
+  risk1 = simulate_group(n1, p1)
+  risk2 = simulate_group(n2, p2)
+  efficacy = 1 - risk2 / risk1
+  return(efficacy)
+}
+```
+
+In the code below, the trial is simulated once, given the parameters of the original trial.
+
+```{r Running the trial once}
+p1 <- a_control / n_control
+p2 <- a_treatment / n_treatment
+simulate_trial(n_control, p1, n_treatment, p2)
+```
+
+Now the trial is simulated $1000$ times and the distribution of the relative risks visualized using a kernel density estimate plot.
+
+```{r Simulating 1000 trials}
+t2 <- comprehenr::to_vec(for (i in 1:1000) simulate_trial(n_control, p1, n_treatment, p2))
+```
+
+```{r Visualizing distribution of relative risks}
+plot(
+  density(t2),
+  col = "deepskyblue",
+  main = "Kernel density estimate",
+  xlab = "Efficacy",
+  las = 1
+  )
+```
+
+The mean efficacy of the $1000$ simulated trials is `r round(mean(t2), digits = 2)` and the actual efficacy was `r round(efficacy, digits = 2)`.
+
+A confidence interval for a confidence level of $90$% is calculated below.
+
+```{r Ninety five percent CI around the relative risk}
+t2_uncertainty <- unname(quantile(t2, probs = c(0.05, 0.95)))
+t2_uncertainty
+```
+
+From this estimation it can now be stated that the intervention has an efficacy of `r round(efficacy * 100, digits = 1)`%, $90$% CI `r round(unname(t2_uncertainty)[1] * 100, digits = 1)`% to `r round(unname(t2_uncertainty)[2] * 100, digits = 1)`%.
